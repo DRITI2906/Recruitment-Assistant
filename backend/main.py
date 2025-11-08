@@ -7,10 +7,8 @@ import os
 import logging
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
-# Setup logger
 logger = logging.getLogger(__name__)
 
 try:
@@ -100,7 +98,6 @@ async def analyze_jd(payload: JDRequest):
     if not text:
         raise HTTPException(status_code=400, detail="description is required")
 
-    # If gemini is configured, delegate to it; otherwise use local placeholder logic
     if gemini_client.available():
         result = await gemini_client.analyze_jd(text, payload.job_title)
         return JDAnalysis(word_count=result.get("word_count", 0), top_skills=result.get("top_skills", []), notes=result.get("notes"))
@@ -108,15 +105,14 @@ async def analyze_jd(payload: JDRequest):
     words = re.findall(r"\w+", text)
     word_count = len(words)
 
-    # naive: extract capitalized tokens or common skill keywords
     candidates = re.findall(r"\b([A-Z][A-Za-z+#\.]{1,30})\b", payload.description)
     skill_keywords = [k for k in ["Python", "TypeScript", "React", "SQL", "Docker", "AWS", "GCP", "FastAPI"] if k.lower() in payload.description.lower()]
     top_skills = []
-    # prefer explicit keywords first
+    
     for k in skill_keywords:
         if k not in top_skills:
             top_skills.append(k)
-    # then add some capitalized candidates
+    
     for c in candidates:
         if len(top_skills) >= 8:
             break
@@ -133,7 +129,7 @@ async def generate_interview(payload: GenerateInterviewRequest):
     This function returns deterministic, generic questions based on the job title.
     Replace with more advanced generation logic later.
     """
-    # If gemini available, delegate
+    
     if gemini_client.available():
         questions = await gemini_client.generate_interview(payload.description, payload.job_title, payload.num_questions)
         return InterviewQuestions(questions=questions)
@@ -146,7 +142,7 @@ async def generate_interview(payload: GenerateInterviewRequest):
         "Explain a project where you worked with a team — what was your role?",
         "How do you approach debugging and root-cause analysis?",
     ]
-    # return requested number
+    
     n = max(1, min(20, payload.num_questions))
     questions = (base_questions * ((n // len(base_questions)) + 1))[:n]
     return InterviewQuestions(questions=questions)
@@ -188,12 +184,12 @@ async def screen_resume(payload: ScreenResumeRequest):
     if not resume:
         raise HTTPException(status_code=400, detail="resume_text is required")
 
-    # If gemini available, delegate
+   
     if gemini_client.available():
         res = await gemini_client.screen_resume(resume, jd)
         return ScreenResult(pass_rate=res.get("pass_rate", 0.0), highlights=res.get("highlights", []))
 
-    # naive matching: count keyword overlaps
+    
     jd_words = set(w.lower() for w in re.findall(r"\w+", jd))
     resume_words = set(w.lower() for w in re.findall(r"\w+", resume))
     if jd_words:
@@ -202,7 +198,7 @@ async def screen_resume(payload: ScreenResumeRequest):
     else:
         pass_rate = 0.0
 
-    # highlights: show a few matched tokens
+    
     highlights = list((jd_words & resume_words))[:10]
     return ScreenResult(pass_rate=round(pass_rate, 3), highlights=highlights)
 
@@ -213,13 +209,13 @@ async def evaluate_candidate_file(file: UploadFile = File(...), job_description:
 
     `interview_qa` is an optional JSON string (array of {question,answer}) passed as a form field.
     """
-    # Read file bytes
+    
     try:
         contents = await file.read()
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to read uploaded file: {e}")
 
-    # Try to extract text (PDF / plain text)
+   
     resume_text = ""
     try:
         if file.content_type == "application/pdf" or file.filename.lower().endswith(".pdf"):
@@ -277,13 +273,13 @@ async def screen_resume_file(file: UploadFile = File(...), job_description: Opti
     logger = logging.getLogger(__name__)
     logger.info(f"Processing resume file: {file.filename}, content_type: {file.content_type}")
     
-    # Read file bytes
+    
     try:
         contents = await file.read()
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to read uploaded file: {e}")
 
-    # Try to decode as text first
+    
     resume_text = ""
     try:
         # If the file is a PDF, use PyPDF2 to extract text
@@ -322,7 +318,7 @@ async def screen_resume_file(file: UploadFile = File(...), job_description: Opti
 
     logger.info(f"Extracted {len(resume_text)} chars from {file.filename}")
     
-    # Delegate to existing screening implementation
+
     if gemini_client.available():
         logger.info(f"Using Gemini to screen {file.filename}")
         res = await gemini_client.screen_resume(resume_text, job_description or "")
@@ -374,7 +370,7 @@ async def evaluate_candidate(payload: PipelineRequest):
     Returns complete state with all intermediate and final evaluations.
     """
     try:
-        # Build and run the pipeline
+        
         pipeline = build_pipeline()
         result = await run_pipeline(
             pipeline,

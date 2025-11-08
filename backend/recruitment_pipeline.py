@@ -38,17 +38,17 @@ logger = logging.getLogger(__name__)
 
 class RecruitmentState(TypedDict, total=False):
     """State schema for the recruitment pipeline."""
-    # Input
+   
     job_description: str
     resume_text: str
     interview_qa: List[Dict[str, str]]
     
-    # Intermediate results
+   
     jd_analysis: Dict[str, Any]
     resume_eval: Dict[str, Any]
     interview_eval: Dict[str, Any]
     
-    # Final output
+    
     final_evaluation: Dict[str, Any]
 
 
@@ -61,23 +61,23 @@ def build_pipeline():
     """
     logger.info("🔨 Building recruitment pipeline...")
     
-    # Create the state graph
+   
     workflow = StateGraph(RecruitmentState)
     
-    # Add nodes
+    
     workflow.add_node("jd_analyzer", jd_analyzer)
     workflow.add_node("resume_screener", resume_screener)
     workflow.add_node("interview_evaluator", interview_evaluator)
     workflow.add_node("score_aggregator", score_aggregator)
     
-    # Define the flow
+   
     workflow.set_entry_point("jd_analyzer")
     workflow.add_edge("jd_analyzer", "resume_screener")
     workflow.add_edge("resume_screener", "interview_evaluator")
     workflow.add_edge("interview_evaluator", "score_aggregator")
     workflow.add_edge("score_aggregator", END)
     
-    # Compile the graph
+    
     app = workflow.compile()
     
     logger.info("✅ Pipeline built successfully")
@@ -105,14 +105,14 @@ async def run_pipeline(
     """
     logger.info("🚀 Starting recruitment pipeline execution...")
     
-    # Prepare initial state
+    
     initial_state: RecruitmentState = {
         "job_description": job_description,
         "resume_text": resume_text,
         "interview_qa": interview_qa or []
     }
     
-    # Run the pipeline
+    
     try:
         result = await pipeline.ainvoke(initial_state)
         logger.info("✅ Pipeline execution complete")
